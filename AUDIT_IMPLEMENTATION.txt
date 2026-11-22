@@ -1,0 +1,54 @@
+AUDIT ET LIVRAISON — XAUUSD N°1
+
+EXISTANT
+strategy_n1.py : règles N°1 centralisées, réutilisées sans changement.
+market_data.py : lecture historique, agrégation Paris ; ne contrôle pas à lui
+seul la qualité exhaustive (tri et suppression de doublons historiques).
+paper_trading.py et replay_engine.py : backtest/replay validés, conservés.
+simulation_runner.py et persistent_simulation.py : reprise du replay CSV,
+conservés ; leur filtre de 1000 minutes n'est pas utilisé par le nouveau mode.
+signal_engine.py et signal_tracker.py : scan/déduplication historique,
+conservés ; leurs dates ne déclenchent pas d'entrées dans le mode actualisé.
+position_manager.py et price_monitor.py : anciens états et contrôles locaux,
+non branchés sur la nouvelle base. Politique intrabougie différente du replay.
+journal.py : journal du backtest ; les statistiques actualisées sont accessibles
+par main.py stats. Les scripts de lecture CSV ne constituent pas un flux direct.
+main.py : remplacé par le point d'entrée unique, ancien menu sauvegardé.
+
+NOUVEL ENSEMBLE COHÉRENT
+n1_live/config.py : configuration, mode imposé PAPER_ONLY.
+n1_live/market.py : fournisseur public, validation des ticks et bougies.
+feed_bridge/read.mjs : adaptateur de données uniquement, dépendance fixée.
+n1_live/calendar.py : séances, pauses et journées Paris avec DST.
+n1_live/engine.py : signaux, positions, SL/TP, données manquantes et reprise.
+n1_live/storage.py : transactions SQLite, journal, verrou d'exécution.
+n1_live/analytics.py : résultats bruts, durées, statistiques et capital annuel.
+n1_live/app.py : commandes, suivi, arrêt, erreurs, exports et affichage.
+
+HISTORIQUE PROTÉGÉ
+Les 35 fichiers du manifeste avant modification sont vérifiés par SHA-256.
+Seul main.py a changé parmi ces fichiers. Les CSV et résultats d'origine,
+les règles N°1 et les autres modules existants sont inchangés.
+Le replay relancé donne les mêmes 44 opérations ligne par ligne, +1700 $ bruts.
+Une sauvegarde des anciens modules et résultats figure sous backups/before_live_*.
+Les grands CSV d'origine sont contrôlés par empreinte, sans copie supplémentaire.
+
+VALIDATION
+33 tests nouveaux + 13 tests existants passent.
+Cas : règles, SL/TP, une seule position, minuit, DST, jours incomplets,
+reprise avec position ou entrée en attente, fermeture récupérée, doublons,
+ordre, prix aberrants, trous, panne fournisseur, transaction interrompue,
+révisions, bougies de remplissage, verrou, statistiques annuelles.
+Connexion réelle en lecture seule vérifiée avec des ticks âgés de 2 à 3 secondes.
+Deux cycles successifs et un arrêt propre observés. Base SQLite intègre.
+Le bot a été arrêté après ces essais ; aucun service persistant n'est installé.
+
+LIMITES RESTANTES
+Pas encore de validation sur une journée complète ni de trade complet sur flux
+actualisé. Disponibilité/latence du fournisseur public non garanties.
+Récupération bornée à 72 h et 90 s par requête ; les reprises longues peuvent
+échouer si le téléchargement dépasse ce délai. Les incertitudes sont signalées.
+Jours fériés exceptionnels à configurer ; sinon journée incomplète rejetée.
+Positions ambiguës à auditer manuellement, sans résultat inventé.
+Aucune notification externe configurée ; journal terminal et bip facultatif.
+Drawdown sur positions clôturées uniquement. Résultats BID bruts sans coûts.

@@ -1,0 +1,133 @@
+XAUUSD N°1 — PRIX ACTUALISÉS ET PAPER TRADING
+
+DÉMARRER
+Dans le Terminal :
+python3 "/Users/mr_rahmani/Documents/XAUUSD BOT/main.py" run
+
+Le programme reste actif dans ce terminal. Arrêter avec Ctrl+C ; attendre le
+message « Suivi arrêté. État sauvegardé. ». Un arrêt peut attendre la fin de la
+requête réseau en cours (90 secondes maximum par requête). Relancer la même
+commande pour reprendre. Le Mac doit rester allumé, éveillé et connecté.
+Aucun service de démarrage automatique ou processus caché n'est installé.
+
+COMMANDES
+Depuis le dossier du projet :
+python3 main.py status             État du dernier contrôle et âge du prix
+python3 main.py position           Position fictive éventuelle
+python3 main.py signals            Signaux acceptés, exécutés, refusés ou manqués
+python3 main.py trades             Journal des positions et résultats
+python3 main.py stats              Statistiques brutes, mensuelles et annuelles
+python3 main.py events             50 derniers événements techniques/métier
+python3 main.py export             Exports dans runtime/exports
+python3 main.py run --once         Un cycle Internet, puis arrêt
+python3 main.py replay             Replay historique dans runtime/replay_results.csv
+python3 main.py check-csv chemin.csv    Vérification OHLC, ordre et doublons M1
+
+Le replay historique d'origine et simulation_runner.py restent disponibles.
+Ils utilisent leurs propres fichiers. Ils n'alimentent pas les positions du
+mode actualisé. Ne pas utiliser position_manager.py pour modifier ce mode.
+
+SOURCE ET HORODATAGES
+Dukascopy : données publiques XAUUSD BID, sans compte, identifiant ni clé.
+Le connecteur utilise dukascopy-node 1.51.1, version fixée par package-lock.json.
+Python orchestre le bot ; un petit adaptateur Node lit uniquement les prix.
+Toutes les opérations sont fictives. Aucun module d'envoi d'ordre n'existe.
+Le flux est interrogé toutes les 15 secondes ; ce n'est pas un WebSocket.
+Le retard réel dépend du fournisseur et du réseau. L'âge du prix est affiché.
+
+Un prix vieux de plus de 90 secondes ne permet jamais une nouvelle entrée.
+Des ticks historiques récupérés peuvent expliquer la clôture d'une position
+fictive préexistante : l'événement est alors marqué « recovered ».
+On ne rattrape pas une ancienne entrée avec un prix actuel : si le premier
+tick disponible après le signal est périmé, le signal est marqué MISSED.
+
+BOUGIES ET QUALITÉ
+Les ticks BID sont enregistrés et regroupés en M1. Les bougies M1 du fournisseur
+sont également récupérées, pour vérifier la couverture complète des journées
+Europe/Paris, en tenant compte des changements d'heure.
+Le volume fournisseur, lorsqu'il existe, est conservé. La somme de volumes BID
+des ticks est une somme de tailles de cotations, pas un volume de transactions.
+Les bougies plates à volume nul du fournisseur sont des données sans activité :
+elles sont isolées comme « placeholder » et ne valident aucune minute.
+
+Le mode actualisé exige toutes les minutes attendues, contrairement au filtre
+provisoire historique de 1000 minutes. Une minute absente suffit à refuser la
+journée. Les ticks et M1 ne sont jamais remplis artificiellement.
+Calendrier normal : dimanche 18 h à vendredi 17 h à New York, pause quotidienne
+17–18 h. Les jours fériés/fermetures exceptionnelles ne sont pas téléchargés
+automatiquement : les périodes explicites UTC se configurent dans
+extra_closures. Sans adaptation officielle, une journée tronquée sera rejetée.
+
+STRATÉGIE ET EXÉCUTION
+La stratégie existante strategy_n1.py est réutilisée sans modification :
+BUY uniquement ; amplitude >=25 ; clôture dans les 6 % inférieurs ; pas de
+signal vendredi ; une seule position ; SL entrée-5 ; TP entrée+8 ; 10 unités.
+Les journées sont finalisées uniquement après leur fin en heure de Paris.
+L'entrée utilise le premier tick valide du jour de trading suivant, s'il est
+encore frais lors du traitement. Une position peut rester ouverte sans limite.
+Une sortie utilise le premier BID observé au niveau ou au-delà (gaps inclus).
+Les franchissements intraminute suivent l'ordre des ticks reçus.
+Le replay conserve sa politique historique SL_AMBIGUOUS : hypothèse SL d'abord.
+
+ÉTAT, COUPURES ET INCERTITUDES
+runtime/live.sqlite3 contient les ticks, bougies, journées, signaux, positions,
+événements et état, mis à jour dans une même transaction SQLite.
+Ne pas éditer cette base à la main. Pour une copie en fonctionnement, utiliser
+l'API de sauvegarde SQLite ; ne pas copier seulement le fichier principal WAL.
+La commande export produit des journaux lisibles, pas une sauvegarde restaurable.
+
+Après une coupure, le bot tente de récupérer les ticks manquants (72 h maximum).
+S'il reste un trou supérieur à 120 secondes de marché ouvert pendant une
+position, celle-ci devient AMBIGUOUS, sans gain/perte inventé. Elle reste
+bloquante jusqu'à un audit humain des données. La résolution automatique d'une
+position ambiguë n'est volontairement pas implémentée.
+
+Une variation de plus de 5 % entre deux cotations est refusée pour audit.
+Ce contrôle peut aussi bloquer un mouvement extrême réel ; il n'altère pas SL/TP.
+La modification de règles ou de contrôles de qualité impose une nouvelle base,
+pour ne pas mélanger deux hypothèses de simulation. Ne pas effacer l'ancienne.
+Un verrou interdit deux suivis simultanés sur la même base.
+Les erreurs réseau provoquent des nouvelles tentatives espacées, plafonnées
+à 300 secondes. Un arrêt/coupure n'est jamais présenté comme une surveillance.
+
+CONFIGURATION
+bot_config.json : fréquence, fraîcheur, récupération, base, contrôles de prix,
+fermetures exceptionnelles. Pas de secrets dans cette configuration.
+Mode PAPER_ONLY et source dukascopy-public-bid sont obligatoires.
+La stratégie est fixée dans strategy_n1.py, pas réécrite dans la configuration.
+Le champ bell active un bip de terminal lors de nouveaux événements.
+Les notifications externes (e-mail, Telegram, etc.) ne sont pas configurées.
+Les événements importants sont visibles dans le journal ; aucune transmission
+à un tiers n'est effectuée.
+
+STATISTIQUES
+Résultats bruts théoriques BID : pas de spread, commission, swap ni frais.
+Le capital de comparaison est réinitialisé à 1000 $ au début de chaque année.
+Les résultats sont attribués au mois/à l'année de clôture.
+Le drawdown calculé porte sur les trades clôturés, pas sur l'équité intratrade.
+Les positions ambiguës ne reçoivent pas de résultat chiffré inventé.
+
+TESTER
+python3 -B -m unittest discover -s tests_live -v
+python3 -B -m unittest test_strategy test_replay_engine test_persistent_simulation
+
+DÉPENDANCES SI DÉPLACEMENT SUR UN AUTRE MAC
+Python avec pandas 2.3.3 et Node.js compatible avec dukascopy-node.
+python3 -m pip install -r requirements.txt
+npm ci --prefix feed_bridge --ignore-scripts
+Versions actuellement validées : Python local et Node 26.13.1.
+
+LIMITES DE VALIDATION
+Les prix Internet et la reprise ont été vérifiés sur des cycles courts.
+Les signaux, entrées, SL/TP, coupures et changements d'heure sont validés par
+des tests déterministes. Une journée complète de fonctionnement continu et
+un trade complet en conditions actualisées restent à observer.
+La disponibilité du flux public n'est pas garantie ; la fonction de données
+récentes de la bibliothèque est annoncée expérimentale.
+Les contrôles stricts peuvent refuser des journées et réduire les signaux par
+rapport au backtest. Les 44 trades historiques ne sont pas une promesse future.
+
+SOURCES TECHNIQUES
+https://www.dukascopy-node.app/downloading-real-time-data
+https://wiki.dukascopy.com/en/manuals/jforex4-desktop/trading-sessions
+https://www.dukascopy.com/api/data/get/historical-data-export

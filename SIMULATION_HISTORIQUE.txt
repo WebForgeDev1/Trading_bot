@@ -1,0 +1,25 @@
+XAUUSD N°1 — SIMULATION HISTORIQUE UNIQUEMENT
+
+Lancement depuis n'importe quel dossier :
+python3 "/Users/mr_rahmani/Documents/XAUUSD BOT/simulation_runner.py"
+
+Par défaut : CSV 2026 local. Le premier lancement traite l'historique ; les
+suivants traitent uniquement les minutes ajoutées. Aucune connexion réseau.
+
+historical_simulation_state.json contient ensemble le curseur, la journée en
+cours, les signaux, la position fictive et les trades clôturés. Ne pas le modifier.
+historical_simulation_trades.csv est un export régénérable depuis cet état.
+Les anciens trackers et position_state.json restent indépendants de ce moteur.
+Un verrou empêche deux exécutions simultanées sur le même état.
+
+La journée en cours n'est évaluée qu'au premier prix de la journée suivante.
+L'entrée utilise cette ouverture. SL/TP et gestion des gaps ou bougies ambiguës
+restent identiques au replay. Une seule position peut être ouverte.
+Le filtre existant de 1000 minutes est conservé ; il ne garantit pas la qualité
+ni l'exhaustivité d'une journée. Résultats bruts, sans coûts de transaction.
+
+Pour un autre CSV, préciser --csv et choisir un nouvel état avec --state et un
+nouvel export avec --output. Les dossiers de sortie doivent déjà exister.
+Le moteur refuse un historique déjà traité modifié/tronqué ou une modification
+des paramètres ; utiliser un nouvel état pour rejouer cette autre version.
+Il conserve la dernière journée sans produire de signal prématuré.

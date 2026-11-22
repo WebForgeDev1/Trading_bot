@@ -1,0 +1,49 @@
+
+from pathlib import Path
+import pandas as pd
+
+from market_data import load_market_data
+from data_tracker import load_last_timestamp, save_last_timestamp
+from position_manager import PositionManager
+
+BASE_DIR = Path(__file__).resolve().parent
+FILENAME = "xauusd-m1-bid-2026-01-01-2026-10-31T23.csv"
+
+paths = [
+    BASE_DIR / "data" / FILENAME,
+    BASE_DIR / "CSV data" / FILENAME,
+]
+
+csv_path = next((p for p in paths if p.exists()), None)
+
+if csv_path is None:
+    raise FileNotFoundError("CSV XAUUSD introuvable")
+
+prices = load_market_data(csv_path)
+last = load_last_timestamp()
+manager = PositionManager()
+
+print("\nXAUUSD N°1 — SIMULATION RUNNER")
+print("-" * 45)
+
+if last is None:
+    print("Tracker non initialisé.")
+else:
+    new_prices = prices[prices.index > pd.Timestamp(last)]
+
+    print("Nouvelles minutes :", len(new_prices))
+
+    if new_prices.empty:
+        print("Aucune nouvelle donnée à traiter.")
+    else:
+        print("Première minute :", new_prices.index[0])
+        print("Dernière minute :", new_prices.index[-1])
+        # Pour l'instant : validation de lecture uniquement.
+        # Aucun signal ou trade n'est traité.
+        save_last_timestamp(new_prices.index[-1])
+        print("Curseur mis à jour.")
+
+# Lecture seule : aucune position ni curseur modifié.
+manager.show_position()
+
+print("\nMODE SIMULATION UNIQUEMENT")

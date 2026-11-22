@@ -1,0 +1,14 @@
+{
+  "mode": "PAPER_ONLY",
+  "source": "dukascopy-public-bid",
+  "database": "runtime/live.sqlite3",
+  "poll_seconds": 15,
+  "request_timeout_seconds": 90,
+  "stale_seconds": 90,
+  "max_gap_seconds": 120,
+  "max_jump_fraction": 0.05,
+  "recovery_hours": 72,
+  "history_days": 3,
+  "bell": false,
+  "extra_closures": []
+}
