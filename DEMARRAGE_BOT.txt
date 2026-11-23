@@ -1,0 +1,140 @@
+XAUUSD N°1 — GUIDE ACTUEL — PAPER TRADING UNIQUEMENT
+
+DÉMARRER DANS LE DOSSIER DU PROJET
+python3 main.py run
+
+Depuis un autre dossier :
+python3 "/Users/mr_rahmani/Documents/XAUUSD BOT/main.py" run
+
+Le tableau de bord terminal affiche BID, ASK, spread, âge du prix, connexion,
+qualité des journées Paris, dernier signal, attente d'entrée, position fictive,
+SL/TP, résultat flottant indicatif, dernière clôture et statistiques.
+Il se met à jour à chaque cycle ; le moteur reçoit les prix toutes les 15 s
+auxquelles s'ajoute le temps de traitement. Ce n'est pas un flux WebSocket.
+Le Mac doit rester éveillé et connecté. Aucun service caché n'est installé.
+
+ARRÊTER
+Ctrl+C : arrêt propre, état sauvegardé.
+Depuis un autre terminal : python3 main.py emergency-stop
+Ce verrou persiste après un redémarrage. Il arrête le processus et bloque toute
+nouvelle entrée. Il ne fabrique pas une clôture de la position fictive.
+Pour lever le verrou : python3 main.py resume
+Puis démarrer explicitement : python3 main.py run
+
+CONSULTER SANS DÉMARRER UNE SECONDE SIMULATION
+python3 main.py status          Dernier état et qualité des prix
+python3 main.py dashboard       Tableau de bord terminal rafraîchi toutes les 5 s
+python3 main.py position        Détails de la position fictive
+python3 main.py signals         Signaux acceptés, refusés et manqués
+python3 main.py days            Journées contrôlées et minutes manquantes
+python3 main.py trades          Journal des positions
+python3 main.py stats           Statistiques et coûts
+python3 main.py events          Événements techniques et métier récents
+python3 main.py export          Exports dans runtime/exports
+python3 main.py run --once      Un cycle Internet puis arrêt
+python3 main.py mt5-status      Diagnostic MT5, sans connexion de trading
+
+SAUVEGARDER / RESTAURER
+python3 main.py backup
+Crée une sauvegarde SQLite cohérente et vérifiée sous runtime/backups.
+Une sauvegarde est aussi créée au premier démarrage de chaque journée.
+Les exports CSV/JSON sont lisibles mais ne remplacent pas cette sauvegarde.
+
+Restauration volontaire, suivi arrêté :
+python3 main.py restore /chemin/sauvegarde.sqlite3 --confirm-restore
+La base présente est sauvegardée avant remplacement. Le verrou d'urgence est
+activé : contrôler l'état restauré puis lancer resume et run. La reprise tentera
+de récupérer les ticks manqués, sans recréer un signal ou un trade existant.
+Ne pas copier isolément une base SQLite active en mode WAL.
+
+RÈGLES N°1 INCHANGÉES
+BUY XAUUSD uniquement ; D1 Europe/Paris ; range >=25 ; clôture dans les 6 %
+inférieurs ; aucun signal vendredi ; une seule position ; entrée au premier
+prix exploitable du prochain jour de trading ; SL entrée-5 ; TP entrée+8 ;
+risque nominal théorique 50 $, exposition simplifiée 10 unités ; aucune durée
+maximale de conservation. Le module strategy_n1.py reste inchangé.
+
+EXÉCUTION ET COÛTS
+Nouveaux BUY fictifs au ASK, sorties au BID. Le SL/TP est calculé autour de l'ASK
+d'entrée. Le spread est donc payé une fois, jamais soustrait une seconde fois.
+Un franchissement en gap sort au premier BID observé au niveau ou au-delà.
+Le risque de 50 $ est nominal, avant coûts et gaps ; ce n'est pas une perte
+maximale garantie. Aucune conversion en lots réels n'est effectuée.
+
+bot_config.json contient :
+commission_per_unit_per_side_usd : commission USD par unité et par côté.
+financing_per_unit_per_day_usd : financement USD par unité et par jour écoulé.
+max_spread_usd : plafond optionnel mesuré, pas une valeur arbitraire.
+Ces champs valent null par défaut : inconnu / plafond non configuré.
+Ne pas remplacer null par 0 pour prétendre connaître les coûts du courtier.
+Le financement configuré utilise une estimation linéaire du temps écoulé ;
+il ne reproduit pas automatiquement le triple swap ou le calendrier d'un broker.
+Les conditions de coûts sont figées dans chaque trade lors de son ouverture.
+Une modification ultérieure ne réécrit pas le résultat des anciennes positions.
+Un résultat net estimé n'est affiché que si commission et financement sont
+renseignés. Les anciens trades BID sont identifiés séparément et conservés.
+Le P&L flottant affiché reste indicatif ; vérifier l'âge du dernier prix.
+
+DONNÉES ET JOURNÉES
+Dukascopy public en lecture seule ; aucun compte ni clé. Les ticks construisent
+les M1 ; les M1 du fournisseur alimentent le contrôle des journées Paris.
+Les bougies plates à volume nul sont isolées et ne valident pas une minute.
+Une journée est terminée chronologiquement après minuit, mais n'est utilisable
+pour un signal que si toutes les minutes de marché attendues sont valides.
+Les journées incomplètes restent signalées INCOMPLETE, jamais COMPLETE.
+L'écran distingue date analysée, qualité de la dernière séance et jour en cours.
+
+Le démarrage analyse les jours fermés téléchargés, sans ouvrir d'anciens signaux.
+À minuit, un cache antérieur à minuit ne permet pas de finaliser la veille.
+Une attente de 90 secondes laisse arriver les dernières M1 ; le premier tick
+est conservé pour être traité à son vrai prix, s'il reste frais. Sinon l'entrée
+est manquée, jamais remplacée par un prix tardif. La fraîcheur est recontrôlée
+pendant un long rattrapage.
+
+Calendrier normal : dimanche 18 h à vendredi 17 h New York, pause 17–18 h.
+Les fermetures exceptionnelles se configurent dans extra_closures en UTC.
+Sans calendrier exceptionnel vérifié, le bot refuse une journée trouée.
+Une indisponibilité des M1 ne bloque pas le suivi SL/TP sur des ticks valides.
+Après coupure : récupération de 72 h maximum. Un trou non récupérable pendant
+une position la marque AMBIGUOUS ; son résultat n'est pas inventé et elle bloque
+les nouvelles entrées jusqu'à audit humain. Aucun changement de source en cours
+de position ni aucune clôture temporelle ne sont effectués.
+
+STOCKAGE / CONFIDENTIALITÉ
+runtime/live.sqlite3 : ticks, bougies, signaux, positions, trades, événements,
+curseurs et état sauvegardés dans une transaction SQLite.
+runtime/technical.log : erreurs et suivi technique, avec rotation.
+runtime/*.halt.json : verrou d'urgence persistant.
+Les prix sont demandés en lecture seule. Aucun appel d'envoi d'ordre n'existe.
+Ne pas publier runtime, sauvegardes, exports courtier ou secrets sur GitHub.
+Le .gitignore ajouté ne retire pas les fichiers déjà suivis par Git.
+
+MT5
+Le lecteur local CSV et un indicateur MQL5 sans fonction d'ordre sont fournis
+sous mt5_readonly. Voir mt5_readonly/CONFIGURATION.txt. Les fichiers du terminal
+Wine sont présents sur ce Mac, mais la compilation de l'indicateur et les prix
+réels du courtier n'ont pas été validés. Aucun identifiant n'a été demandé.
+Dukascopy reste la source par défaut. Utiliser une base distincte pour MT5.
+
+HISTORIQUE ET TESTS
+python3 main.py replay
+Écrit runtime/replay_results.csv, sans écraser la référence historique.
+Référence conservée : 44 trades, 30 TP, 14 SL, +1700 $ bruts (BID historique).
+La simulation ASK/BID peut diverger de cette référence : ne pas forcer l'égalité.
+
+python3 -B -m unittest discover -s tests_live -v
+python3 -B -m unittest test_strategy test_replay_engine test_persistent_simulation
+
+Installation sur un autre ordinateur compatible : Python >=3.10 avec pandas,
+Node.js pour le lecteur Dukascopy ; dépendances déjà présentes sur ce Mac.
+python3 -m pip install -r requirements.txt
+npm ci --prefix feed_bridge --ignore-scripts
+
+LIMITES HONNÊTES
+Les tests automatiques couvrent les cycles, les erreurs et les redémarrages.
+Des cycles Internet courts, la reprise et l'arrêt d'urgence ont été observés.
+Une session prolongée incluant la clôture journalière naturelle et un trade
+naturel complet reste à observer. La disponibilité du flux public n'est pas
+garantie. Le tableau de bord livré est terminal, pas l'interface Streamlit
+évoquée dans une version de conception Notion. Aucun hébergement 24 h/24 n'est
+installé. Le drawdown porte sur les positions clôturées, pas l'équité intratrade.

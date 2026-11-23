@@ -1,0 +1,101 @@
+AUDIT FINAL — XAUUSD BOT N°1 — 23 NOVEMBRE 2026
+
+RÉSULTAT : 30 critères vérifiés sur 32, soit 93,75 % (93,8 % arrondi).
+Point de départ : 23/32 = 71,875 % (71,9 % arrondi).
+Chaque critère a le même poids. Ce score est une couverture des exigences,
+pas une mesure de rentabilité, de disponibilité ou une garantie sans panne.
+Les deux critères non validés empêchent de déclarer honnêtement 100 %.
+
+76 TESTS RÉUSSIS : 63 pour le mode actualisé, 13 pour les modules existants.
+Référence inchangée : 44 trades, 30 TP, 14 SL, +1700 $ bruts.
+Les fichiers historiques et strategy_n1.py sont inchangés (SHA-256).
+33 fichiers Python inventoriés, syntaxe vérifiée ; ancien projet conservé.
+SQLite : integrity_check = ok. Aucun ordre réel envoyé.
+
+FONCTION | TERMINÉ | TESTÉ | À CORRIGER / PREUVE
+01. Audit de tous les fichiers Python | Oui | Oui | Inventaire AST et lecture des modules existants
+02. Règles N°1 inchangées | Oui | Oui | SHA-256 strategy_n1.py ; test_strategy ; test_strategy_boundaries
+03. Référence historique identique | Oui | Oui | Comparaison DataFrame ligne à ligne, 44 / 30 TP / 14 SL / +1700
+04. Réception de prix Internet | Oui | Oui | Cycle réel CONNECTED avec BID/ASK et horodatage récent
+05. Prix invalides, futurs et périmés | Oui | Oui | test_bad_prices ; test_future_tick_rejected ; test_stale_first_quote_missed_not_deferred
+06. Reconnexion automatique | Oui | Oui | test_continuous_loop_reconnects_without_manual_restart
+07. Données manquantes et récupération | Oui | Oui | test_unrecoverable_gap_marks_ambiguous ; test_recovered_ticks_close_existing_without_opening_old_trade
+08. Doublons et ordre chronologique | Oui | Oui | test_out_of_order_batch_atomic_rejection ; test_tp_and_restart_no_duplicates
+09. Construction des bougies M1 | Oui | Oui | test_m1_built_from_ticks
+10. Journées Paris et changements d’heure | Oui | Oui | test_dst_day_lengths ; test_midnight_cache_cannot_finalize_or_consume_first_tick
+11. Validation des journées complètes | Oui | Oui | test_missing_minute_rejects_candidate ; test_delayed_last_candle_waits_then_enters_first_price
+12. Détection des signaux officiels | Oui | Oui | test_strategy_boundaries ; test_friday_no_signal
+13. Entrée au premier prix du prochain jour | Oui | Oui | test_full_application_signal_entry_tp_sl_restarts ; test_delayed_last_candle_waits_then_enters_first_price
+14. BUY uniquement et une seule position | Oui | Oui | test_buy_levels_and_single_position ; test_existing_position_rejects_next_signal
+15. SL, TP, gaps et ambiguïtés | Oui | Oui | test_buy_ask_and_stop_bid ; test_buy_ask_and_tp_bid_cycle ; test_replay_engine
+16. Aucune sortie temporelle | Oui | Oui | test_position_holds_without_time_limit
+17. Achat ASK / sortie BID | Oui | Oui | test_buy_ask_and_tp_bid_cycle ; test_buy_ask_and_stop_bid
+18. Coûts explicites et net conditionnel | Oui | Oui | test_known_costs_and_no_double_spread ; test_partial_costs_are_not_presented_as_net ; test_cost_update_does_not_reprice_existing_position
+19. Journal complet et exports | Oui | Oui | SQLite events/signals/days/trades ; commande export exécutée
+20. Transactions et reprise des positions | Oui | Oui | test_failed_commit_rolls_back_trade_and_quote ; test_pending_survives_restart
+21. Sauvegarde restaurable | Oui | Oui | Commande backup réelle ; test_backup_restore_pending_and_deduplication
+22. Logs et surveillance de la connexion | Oui | Oui | technical.log avec rotation ; tableau de bord : âge/état/erreurs
+23. Arrêt propre | Oui | Oui | Deux cycles réels et arrêt propre déjà observés ; run --once final
+24. Arrêt d’urgence persistant | Oui | Oui | Tests latch/rollback ; essai réel 0,25 s et redémarrage bloqué
+25. Séparation replay / simulation | Oui | Oui | Référence protégée ; bases distinctes ; test_changed_rules_refused
+26. Tests de cycle complet applicatif | Oui | Oui | test_full_application_signal_entry_tp_sl_restarts, TP et SL avec redémarrages
+27. Tableau de bord BID/ASK/SL/TP/résultats | Oui | Oui | test_dashboard_prices_position_costs ; affichage réel vérifié
+28. Commande unique et guide utilisable | Oui | Oui | main.py run ; DEMARRAGE_BOT.txt mis à jour
+29. Adaptateur MT5 en lecture seule préparé | Oui | Oui | Lecteur CSV testé, test_mt5_readonly_can_supply_paper_quotes ; indicateur source sans API d’ordre
+30. MT5 compilé et prix du courtier validés | Non | Non | BLOQUÉ : aucun export actif ; indicateur non compilé dans l’environnement disponible
+31. Observation prolongée avec clôture naturelle | Non | Non | NON VÉRIFIÉ : tests déterministes et cycles Internet courts seulement
+32. Matrice de livraison et score traçable | Oui | Oui | 32 critères binaires, preuves et limites dans ce rapport
+
+MODIFICATIONS EFFECTUÉES
+- Achat ASK, sortie BID, niveaux -5/+8 autour de l’entrée ; spread non doublé.
+- Coûts explicites optionnels ; net estimé absent quand les coûts sont inconnus.
+- Conditions de coûts figées par trade ; pas de réécriture des anciens résultats.
+- Tableau de bord terminal lisible : prix, spread, qualité, signal, position, SL/TP, P&L.
+- Arrêt d’urgence persistant, annulation des requêtes, reprise volontaire.
+- Sauvegarde SQLite vérifiée et restauration avec sauvegarde préalable et verrou.
+- Lecteur MT5 CSV + indicateur de lecture seule ; analyse Dukascopy conservée.
+- Tests de coûts, sauvegardes, arrêt d’urgence et absence d’API d’ordre ajoutés.
+
+LIMITES ET BLOCAGES PRÉCIS
+1. MT5 : fichiers du terminal Wine présents, package Python natif absent, Wine
+   non disponible dans le PATH. Indicateur non compilé, aucun export courtier
+   disponible. Il reste à compiler/activer le lecteur dans un terminal utilisable
+   et comparer son BID/ASK horodaté avec le graphique. Aucun identifiant demandé.
+2. Une observation prolongée incluant minuit Paris et un trade naturel complet
+   n’a pas été réalisée. Le cycle complet est testé avec données déterministes.
+3. Les commissions et financements du courtier ne sont pas fournis : null,
+   résultat net inconnu. Les montants renseignés produisent une estimation ;
+   le modèle linéaire de financement ne reproduit pas les triples swaps.
+4. Les fermetures exceptionnelles ne sont pas synchronisées automatiquement.
+   Une journée manquante est rejetée ; une position ambiguë reste à auditer.
+5. Le tableau de bord livré est terminal. Streamlit et l’hébergement permanent
+   mentionnés dans la conception Notion n’ont pas été installés.
+
+DOCUMENTS ET DÉPÔT CONSULTÉS
+XAUUSD BOT SYSTEM DESIGN : https://app.notion.com/p/42013045047280729e49d2fa13ac2b23
+XAUSD : https://app.notion.com/p/420130450472806ea089e6223ff9b8e1
+GitHub : https://github.com/WebForgeDev1/Trading_bot
+La page XAUSD contient une ancienne proposition à 5 % puis la version finale
+à 6 %, sans vendredi : la version finale et la demande actuelle sont retenues.
+La conception mentionne aussi des ordres MT5 démo et 10000 $ : non appliqués.
+La mission présente impose paper trading, lecture seule et risque nominal 50 $.
+Le connecteur GitHub était non connecté ; le dépôt public a été lu en accès web.
+Le main.py public importe n1_live, absent de la liste racine publique consultée.
+Le dossier local contient ces modules ; aucun push n’a été effectué.
+Le dépôt local suit déjà des états et fichiers générés. .gitignore évite les
+nouveaux ajouts indésirables mais ne retire pas les fichiers déjà suivis.
+
+RÉFÉRENCES TECHNIQUES MT5
+https://www.metatrader5.com/en/terminal/help/start_advanced/install_mac
+https://www.mql5.com/en/docs/python_metatrader5
+https://pypi.org/project/MetaTrader5/#files
+
+DÉMARRER
+python3 main.py run
+ARRÊT NORMAL : Ctrl+C
+ARRÊT D’URGENCE : python3 main.py emergency-stop
+REPRISE APRÈS URGENCE : python3 main.py resume puis python3 main.py run
+
+ÉTAT À LA LIVRAISON : programme arrêté après les essais ; aucun service caché.
+Consulter DEMARRAGE_BOT.txt pour les commandes et mt5_readonly/CONFIGURATION.txt
+pour la préparation MT5.

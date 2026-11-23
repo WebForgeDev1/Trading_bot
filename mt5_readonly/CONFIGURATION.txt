@@ -1,0 +1,50 @@
+MT5 — ADAPTATEUR DE COTATIONS EN LECTURE SEULE
+
+État constaté sur ce Mac : macOS ARM64 ; fichiers terminal64.exe et metaeditor64.exe
+présents dans le préfixe Wine ; package Python officiel MetaTrader5 absent ;
+aucun exécutable Wine utilisable trouvé dans le PATH pendant l'audit.
+L'indicateur fourni n'a donc pas été compilé ni validé sur un flux courtier ici.
+Le consommateur Python et son intégration au paper trading ont été testés avec
+un fichier de cotations déterministe. Ceci n'est pas une validation du broker.
+
+Aucune clé ni aucun identifiant ne sont requis par le bot. Aucun SDK de trading
+n'est importé. L'indicateur ne contient que la lecture des ticks et leur export.
+Il ne faut pas activer le trading automatique pour ce lecteur indicateur.
+
+Préparation dans un terminal MT5 disponible :
+1. Dans MetaEditor, ouvrir XAUUSD_ReadOnly.mq5, le placer sous MQL5/Indicators,
+   puis compiler. Résoudre toute erreur de compilation avant de poursuivre.
+2. Dans MT5 déjà configuré par l'utilisateur, choisir le graphique du symbole or
+   du courtier. QuoteSymbol doit correspondre exactement au symbole du graphique
+   (XAUUSD, XAUUSD.a, GOLD, etc. selon le courtier).
+3. Attacher l'indicateur. Le journal affiche le chemin du CSV dans Common/Files.
+   L'indicateur peut fonctionner en lecture seule ; ne pas activer d'exécution.
+4. Copier bot_config.json vers une configuration locale distincte. Y définir :
+   quote_source = "mt5_csv"
+   mt5_csv_path = chemin ABSOLU du fichier XAUUSD_readonly.csv
+   mt5_symbol = symbole exact configuré dans l'indicateur
+   database = "runtime/mt5_paper.sqlite3"
+5. Vérifier les heures du broker et le calendrier : l'analyse reste Dukascopy
+   en Europe/Paris. Les horaires ou jours fériés différents ne sont pas inférés.
+6. Vérifier : python3 main.py --config mt5_config.json mt5-status
+   Le prix doit être frais et correspondre au graphique du courtier.
+7. Seulement après ces vérifications :
+   python3 main.py --config mt5_config.json run
+
+Cette dernière commande lit le CSV MT5 et les M1 Dukascopy ; elle n'envoie aucun
+ordre. Un export absent/périmé bloque les nouvelles entrées. La source des prix
+n'est jamais changée automatiquement au milieu d'une position. Dukascopy seul
+reste disponible via bot_config.json et sa base distincte.
+
+Les timestamps doivent être UTC en millisecondes. Si le terminal/export ne donne
+pas ces heures correctement, le bot rejette les prix futurs ou les juge périmés.
+Le CSV peut contenir la répétition du tick frontière ; le moteur déduplique.
+Le fichier grandit : le conserver pour l'audit, surveiller l'espace disque.
+Ne pas modifier/tronquer un export servant à récupérer une période manquante.
+Les commissions et swaps ne sont pas contenus dans cet export de prix ; ils
+restent inconnus jusqu'à configuration de données contractuelles vérifiées.
+
+Documentation officielle :
+https://www.metatrader5.com/en/terminal/help/start_advanced/install_mac
+https://www.mql5.com/en/docs/python_metatrader5
+https://www.mql5.com/en/docs/series/copyticks
